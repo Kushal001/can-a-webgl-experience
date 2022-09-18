@@ -15,14 +15,21 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #fafafa;
-  color: #000;
 
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+}
+
+.three {
+  min-height: calc(3000px + 100vh);
+}
+
+.webgl {
+  position: fixed;
+  z-index: 0;
 }

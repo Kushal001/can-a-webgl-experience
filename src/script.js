@@ -1,13 +1,22 @@
 import "./style.css"
 import * as THREE from "three"
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import * as dat from "dat.gui"
+
+/**
+ * Loaders
+ */
+const cubeTextureLoader = new THREE.CubeTextureLoader()
 
 /**
  * Base
  */
 // Debug
 const gui = new dat.GUI()
+
+const debugObject = {
+  canRotateScrollHeight: 3000,
+}
 
 // Canvas
 const canvas = document.querySelector("canvas.webgl")
@@ -16,36 +25,31 @@ const canvas = document.querySelector("canvas.webgl")
 const scene = new THREE.Scene()
 
 /**
- * Floor
+ * Update all materials
  */
-const floor = new THREE.Mesh(
-  new THREE.PlaneBufferGeometry(10, 10),
-  new THREE.MeshStandardMaterial({
-    color: "#444444",
-    metalness: 0,
-    roughness: 0.5,
+const updateAllMaterials = () => {
+  scene.traverse((child) => {
+    if (
+      child instanceof THREE.Mesh &&
+      child.material instanceof THREE.MeshStandardMaterial
+    ) {
+      // child.material.envMap = environmentMap
+      child.material.envMapIntensity = 3
+      child.material.needsUpdate = true
+    }
   })
-)
-floor.receiveShadow = true
-floor.rotation.x = -Math.PI * 0.5
-scene.add(floor)
+}
 
 /**
- * Lights
+ * Environment map
  */
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.8)
-scene.add(ambientLight)
+const environmentMap = cubeTextureLoader
+  .setPath("/textures/environmentMaps/0/")
+  .load(["px.png", "nx.png", "py.png", "ny.png", "pz.png", "nz.png"])
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6)
-directionalLight.castShadow = true
-directionalLight.shadow.mapSize.set(1024, 1024)
-directionalLight.shadow.camera.far = 15
-directionalLight.shadow.camera.left = -7
-directionalLight.shadow.camera.top = 7
-directionalLight.shadow.camera.right = 7
-directionalLight.shadow.camera.bottom = -7
-directionalLight.position.set(5, 5, 5)
-scene.add(directionalLight)
+environmentMap.encoding = THREE.sRGBEncoding
+// scene.background = new THREE.Color("#000")
+scene.environment = environmentMap
 
 /**
  * Sizes
@@ -54,6 +58,50 @@ const sizes = {
   width: window.innerWidth,
   height: window.innerHeight,
 }
+
+/**
+ * Camera
+ */
+// Base camera
+const camera = new THREE.PerspectiveCamera(
+  75,
+  sizes.width / sizes.height,
+  0.1,
+  100
+)
+camera.position.set(1.5, 1.5, 0)
+// camera.position.set(0, 2, 0)
+camera.lookAt(0, 0, 0)
+scene.add(camera)
+
+// Debug
+gui.add(camera.position, "x").min(-5).max(5).step(0.1).name("cameraX")
+gui.add(camera.position, "y").min(-5).max(5).step(0.1).name("cameraY")
+gui.add(camera.position, "z").min(-5).max(5).step(0.1).name("cameraZ")
+
+/**
+ * Models
+ */
+const gltfLoader = new GLTFLoader()
+
+let mixer = null
+let object = null
+
+gltfLoader.load("/models/can/can.gltf", (gltf) => {
+  mixer = new THREE.AnimationMixer(gltf.scene)
+  const action = mixer.clipAction(gltf.animations[0])
+
+  action.play()
+
+  gltf.scene.scale.set(0.05, 0.05, 0.05)
+  gltf.scene.position.set(0, -0.6, 0)
+
+  scene.add(gltf.scene)
+
+  object = gltf
+
+  updateAllMaterials()
+})
 
 window.addEventListener("resize", () => {
   // Update sizes
@@ -69,48 +117,49 @@ window.addEventListener("resize", () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
 
-/**
- * Camera
- */
-// Base camera
-const camera = new THREE.PerspectiveCamera(
-  75,
-  sizes.width / sizes.height,
-  0.1,
-  100
-)
-camera.position.set(2, 2, 2)
-scene.add(camera)
-
-// Controls
-const controls = new OrbitControls(camera, canvas)
-controls.target.set(0, 0.75, 0)
-controls.enableDamping = true
+// // Controls
+// const controls = new OrbitControls(camera, canvas)
+// controls.enableDamping = true
 
 /**
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
   canvas: canvas,
+  antialias: true,
 })
-renderer.shadowMap.enabled = true
-renderer.shadowMap.type = THREE.PCFSoftShadowMap
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.physicallyCorrectLights = true
+renderer.outputEncoding = THREE.sRGBEncoding
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 3
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
 /**
  * Animate
  */
 const clock = new THREE.Clock()
-let previousTime = 0
 
+let currentTimeline = window.scrollY / 3000
+let aimedTimeline = window.scrollY / 3000
+
+// Tick
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
-  const deltaTime = elapsedTime - previousTime
-  previousTime = elapsedTime
 
-  // Update controls
-  controls.update()
+  // Rotate can
+  currentTimeline += (aimedTimeline - currentTimeline) * 0.02
+
+  if (object) {
+    const rx = 0
+    const rz = Math.abs(Math.abs(currentTimeline - 0.5) - 0.5) * 1.5
+    // const rz = 0
+    const ry = Math.PI * 2 * currentTimeline
+
+    object.scene.rotation.set(rx, ry, rz)
+  }
 
   // Render
   renderer.render(scene, camera)
@@ -120,3 +169,7 @@ const tick = () => {
 }
 
 tick()
+
+window.addEventListener("scroll", (e) => {
+  aimedTimeline = window.scrollY / 3000
+})

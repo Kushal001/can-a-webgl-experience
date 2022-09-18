@@ -1,5 +1,5 @@
 {
-  "name": "webpack-starter",
+  "name": "can-a-webgl-experience",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "dat.gui": "^0.7.9",
+    "gsap": "^3.11.1",
     "three": "^0.144.0"
   }
 }

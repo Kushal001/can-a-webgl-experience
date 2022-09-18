@@ -1,5 +1,6 @@
 const path = require("path")
 const HtmlWebpackPlugin = require("html-webpack-plugin")
+const CopyWebpackPlugin = require("copy-webpack-plugin")
 const MiniCSSExtractPlugin = require("mini-css-extract-plugin")
 
 module.exports = {
@@ -46,8 +47,15 @@ module.exports = {
 
       // Images
       {
-        test: /\.(png|svg|jpg|jpeg|gif)$/i,
-        type: "asset/resource",
+        test: /\.(jpg|png|gif|svg)$/,
+        use: [
+          {
+            loader: "file-loader",
+            options: {
+              outputPath: "assets/images/",
+            },
+          },
+        ],
       },
 
       // Shaders
@@ -60,11 +68,14 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      title: "Webpack Starter",
+      title: "Can - A Webgl Experience",
       filename: "index.html",
       template: path.resolve(__dirname, "src/index.html"),
       minify: true,
     }),
     new MiniCSSExtractPlugin(),
+    new CopyWebpackPlugin({
+      patterns: [{ from: path.resolve(__dirname, "static") }],
+    }),
   ],
 }
